@@ -8,9 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN pip install --no-cache-dir -e .
 
-RUN adduser --disabled-password --gecos "" appuser
-USER appuser
-
 EXPOSE 8000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "hello:create_app()"]# platform: linux/amd64
+CMD ["/usr/local/bin/gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "hello:create_app()"]
