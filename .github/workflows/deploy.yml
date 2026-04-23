@@ -77,3 +77,15 @@ jobs:
             --service ${{ secrets.ECS_SERVICE }} \
             --task-definition $NEW_REVISION \
             --region ${{ secrets.AWS_REGION }}
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image Tag** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Deployed by** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **ALB URL** | http://fargate-demo-alb-1298687959.us-west-2.elb.amazonaws.com |" >> $GITHUB_STEP_SUMMARY
+          echo "| **ECS Cluster** | \`${{ secrets.ECS_CLUSTER }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **ECS Service** | \`${{ secrets.ECS_SERVICE }}\` |" >> $GITHUB_STEP_SUMMARY

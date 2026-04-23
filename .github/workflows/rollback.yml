@@ -1,0 +1,72 @@
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: 'Task definition revision to roll back to (e.g. 3). Leave empty for previous revision.'
+        required: false
+        default: ''
+
+jobs:
+  rollback:
+    name: Rollback ECS to Previous Version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Determine rollback revision
+        id: revision
+        run: |
+          if [ -n "${{ github.event.inputs.revision }}" ]; then
+            # Use manually specified revision
+            REVISION="${{ github.event.inputs.revision }}"
+          else
+            # Get current revision and roll back one
+            CURRENT=$(aws ecs describe-services \
+              --cluster ${{ secrets.ECS_CLUSTER }} \
+              --services ${{ secrets.ECS_SERVICE }} \
+              --region ${{ secrets.AWS_REGION }} \
+              --query 'services[0].taskDefinition' \
+              --output text | grep -o '[0-9]*$')
+            REVISION=$((CURRENT - 1))
+          fi
+
+          echo "Rolling back to revision: $REVISION"
+          echo "revision=$REVISION" >> $GITHUB_OUTPUT
+
+      - name: Roll back ECS service
+        run: |
+          TASK_DEF_ARN="arn:aws:ecs:${{ secrets.AWS_REGION }}:$(aws sts get-caller-identity --query Account --output text):task-definition/fargate-demo-task:${{ steps.revision.outputs.revision }}"
+
+          echo "Rolling back to: $TASK_DEF_ARN"
+
+          aws ecs update-service \
+            --cluster ${{ secrets.ECS_CLUSTER }} \
+            --service ${{ secrets.ECS_SERVICE }} \
+            --task-definition $TASK_DEF_ARN \
+            --region ${{ secrets.AWS_REGION }}
+
+      - name: Wait for rollback to complete
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ secrets.ECS_CLUSTER }} \
+            --services ${{ secrets.ECS_SERVICE }} \
+            --region ${{ secrets.AWS_REGION }}
+          echo "Rollback complete"
+
+      - name: Verify rollback
+        run: |
+          RUNNING=$(aws ecs describe-services \
+            --cluster ${{ secrets.ECS_CLUSTER }} \
+            --services ${{ secrets.ECS_SERVICE }} \
+            --region ${{ secrets.AWS_REGION }} \
+            --query 'services[0].{Running:runningCount,TaskDef:taskDefinition}' \
+            --output table)
+          echo "$RUNNING"
