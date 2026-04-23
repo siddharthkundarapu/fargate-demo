@@ -120,8 +120,10 @@ resource "aws_lb_target_group" "app" {
   health_check {
     path                = "/"
     healthy_threshold   = 2
-    unhealthy_threshold = 3
-    interval            = 30
+    unhealthy_threshold = 2
+    interval            = 15
+    timeout             = 5
+    matcher             = "200"
   }
 }
 
@@ -188,6 +190,16 @@ resource "aws_ecs_service" "app" {
     container_name   = "fargate-demo"
     container_port   = 8000
   }
+
+  # Circuit breaker: if deployment fails, automatically roll back
+  # to the last stable task definition revision
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  # Give the app time to pass health checks before marking healthy
+  health_check_grace_period_seconds = 30
 
   depends_on = [aws_lb_listener.http]
 }
