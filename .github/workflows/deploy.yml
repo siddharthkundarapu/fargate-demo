@@ -21,7 +21,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
           # NOTE: Long-lived keys are used here due to IAM permission boundaries
-          # in the candidate AWS account preventing OIDC provider creation.
           # In production, this should use OIDC federated identity instead.
 
       - name: Login to Amazon ECR
