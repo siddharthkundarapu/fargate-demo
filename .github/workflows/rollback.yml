@@ -25,20 +25,37 @@ jobs:
         id: revision
         run: |
           if [ -n "${{ github.event.inputs.revision }}" ]; then
-            # Use manually specified revision
             REVISION="${{ github.event.inputs.revision }}"
           else
-            # Get current revision and roll back one
-            CURRENT=$(aws ecs describe-services \
+            # Get list of active task definition revisions in descending order
+            # Skip the current one (first) and take the previous active one
+            CURRENT_ARN=$(aws ecs describe-services \
               --cluster ${{ secrets.ECS_CLUSTER }} \
               --services ${{ secrets.ECS_SERVICE }} \
               --region ${{ secrets.AWS_REGION }} \
               --query 'services[0].taskDefinition' \
-              --output text | grep -o '[0-9]*$')
-            REVISION=$((CURRENT - 1))
+              --output text)
+
+            CURRENT_REVISION=$(echo $CURRENT_ARN | grep -o '[0-9]*$')
+
+            # List active revisions and find the most recent one before current
+            PREVIOUS=$(aws ecs list-task-definitions \
+              --family-prefix fargate-demo-task \
+              --status ACTIVE \
+              --sort DESC \
+              --region ${{ secrets.AWS_REGION }} \
+              --query 'taskDefinitionArns' \
+              --output text | tr '\t' '\n' | grep -v ":${CURRENT_REVISION}$" | head -1 | grep -o '[0-9]*$')
+
+            REVISION=$PREVIOUS
           fi
 
-          echo "Rolling back to revision: $REVISION"
+          if [ -z "$REVISION" ]; then
+            echo "No previous active revision found to roll back to"
+            exit 1
+          fi
+
+          echo "Current revision: rolling back to revision $REVISION"
           echo "revision=$REVISION" >> $GITHUB_OUTPUT
 
       - name: Roll back ECS service
