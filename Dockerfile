@@ -10,4 +10,4 @@ RUN pip install --no-cache-dir -e .
 
 EXPOSE 8000
 
-CMD ["/usr/local/bin/gunicorn", "--bind", "0.0.0.0:9999", "--workers", "2", "hello:create_app()"]
+CMD ["/usr/local/bin/gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "hello:create_app()"]

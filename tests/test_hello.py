@@ -1,3 +1,3 @@
 def test_main_page(client):
     response = client.get('/')
-    assert response.data == b'Hello, World - v2'
+    assert response.data == b'Hello, World - Stable v1'
