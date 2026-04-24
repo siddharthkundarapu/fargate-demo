@@ -40,7 +40,7 @@ data "aws_route_table" "main" {
 
 # ─── INTERNET GATEWAY ────────────────────────────────────────────────────────
 # The default VPC had a blackhole route (old IGW was deleted).
-# We created a new IGW and fixed the route manually via CLI.
+# I created a new IGW and fixed the route manually via CLI.
 # These resources now manage that state in Terraform.
 
 resource "aws_internet_gateway" "main" {
