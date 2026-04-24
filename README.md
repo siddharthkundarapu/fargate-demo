@@ -1,78 +1,67 @@
 # Platform Assessment Homework
 
-This is TravelPerk's assessment homework for Platform candidates.
+# Flask Fargate Demo
 
-Please read
-this document thoroughly and don't hesitate to contact us to devops@travelperk.com if you have any
-doubts.
+Flask app deployed on AWS ECS Fargate with a full CI/CD pipeline.
 
-## Prepare the assessment
+**Live:** `http://fargate-demo-alb-1298687959.us-west-2.elb.amazonaws.com`
 
-To do this assessment please follow these preliminary steps:
+## Stack
+- **App:** Python / Flask / Gunicorn
+- **Infra:** Terraform (VPC, ALB, ECS Fargate, ECR)
+- **CI/CD:** GitHub Actions
 
-  * Copy this repo localy and manually create a repo yourself in your GitHub
-    account. DON'T FORK IT! Otherwise it will appear in the fork list and other
-    candidates could copy it.
-  * Set `[x] Require status checks to pass before merging` on `main` branch in
-    `Project Settings -> Branches`
-  * Review the code here and ask any questions: better clearing doubts and
-    misunderstandings early on
-  
+## Run Locally
+```bash
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt && pip install -e .
+FLASK_APP=hello flask run
+```
 
-## Run the app
+## Deploy Infrastructure
+Configure AWS credentials, then:
+```bash
+cd terraform && terraform init && terraform apply
+```
 
-In a virtualenv, run:
+## CI/CD Pipeline
 
-    python setup.py install FLASK_APP=hello flask run
+| Trigger | Workflow | What happens |
+|---------|----------|-------------|
+| Pull Request | CI | Runs tests + linting. Blocks merge on failure |
+| Merge to main | Deploy | Builds image → pushes to ECR → updates ECS task definition → rolling deploy |
+| Manual | Rollback | Rolls back ECS to any previous active task definition revision |
 
-## Tasks to complete
+## Key Design Decisions
+- **Image tagging:** Git SHA tags (not `:latest`) — every image is traceable to a commit
+- **ECS Circuit Breaker:** If new tasks fail ALB health checks, ECS automatically rolls back to the last stable task definition with zero downtime
+- **Manual Rollback:** GitHub Actions `workflow_dispatch` allows rolling back to any previous revision on demand
+- **Branch protection:** `test` and `lint` are required checks before merge
+- **Platform:** Images built for `linux/amd64` — required for Fargate on ARM Mac
 
-### Deploy the service on AWS Fargate
+## Testing the Pipeline
 
-   * Dockerize the service
-   * Connect to https://travelperk-candidates.signin.aws.amazon.com/console and
-     sign in with the credentials you got from our team and deploy a cluster
-     with a single service and 2 replicas of this application (i.e.  with one
-     task definition and two running tasks).
-   * Terraform the deployment. Please use this repository for references
-     [platform-assessment-terraform][1].  Check the instructions there for
-     general info and to know what services and permissions are available.
+**CI pass scenario**
+Create a branch, open a PR and watch both `test` and `lint` checks go green. Merge button is locked until both pass.
 
-### Create a CI/CD deployment
+**CI fail scenario**
+Break the app response or introduce a linting error in a branch. Open a PR and confirm the merge button is blocked.
 
-Use any tool you have access to (we recommend GitHub actions, because it's
-free, very easy and fast to configure... but up to you) to build a CI/CD over
-the service you have deployed.
+**Full deploy**
+Merge any passing PR to `main`. The Deploy workflow triggers automatically and the change is live on the ALB URL within ~3 minutes.
 
-#### Flow:
+**Automatic rollback (circuit breaker)**
+Deploy a broken image (e.g. wrong port in Dockerfile). ECS detects failed health checks and rolls back to the previous stable revision automatically — no manual intervention needed.
 
-  * Whenever a Pull Request is created, a task testing the application should
-    start, and not allowing to merge if the test fails. (Another task for code
-    linting is a plus).
-  * On merge, the AWS service should redeploy automatically with the new
-    changes.
+**Manual rollback**
+Go to Actions → Rollback → Run workflow. Leave revision empty to roll back to the previous revision, or specify a revision number from the ECS task definition list.
 
-## Important Notes
+## Known Limitations
+| Issue | Why | Fix in production |
+|-------|-----|-------------------|
+| No CloudWatch logs | IAM permissions boundary | Grant `logs:CreateLogGroup` to task execution role |
+| Long-lived AWS keys | OIDC provider creation blocked | Use OIDC federated identity |
+| Local Terraform state | No S3 access | S3 backend + DynamoDB locking |
 
-  * We recommend to try to run the application dockerized locally on your
-    computer before starting the first task.
-  * When doing the CI/CD part: DON'T CREATE PULL REQUEST ON THE ORIGINAL
-    REPOSITORY. This is the default behavior in GitHub and it will expose your
-    work to others!
-  * For the same reason, please avoid calling your repo `travelperk-whatever`.
-  * You may not have time to finish everything in the allocated time. This is fine. If it takes more
-    than 4 hours you can leave the work as it is and write down what your next
-    steps would be. If you want to spend two days or a week, up to you. But we
-    don't want you to waste more of your time.
-  * This is not a speed test. Please don't worry if you don't finish it. The main
-    point of the assessment is to have an overall idea on how you work, what are your
-    priorities, and to open a conversation on how you'd go further in case we wanted
-    to iterate over the exercise.
 
- **Many thanks for your time and good luck!**
 
-[1]: https://github.com/travelperk/platform-assessment-terraform
-# test
-# this is a valid change
-# valid change
-# valid change2
