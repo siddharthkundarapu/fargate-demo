@@ -79,6 +79,12 @@ jobs:
 
       - name: Deployment Summary
         run: |
+          ALB_DNS=$(aws elbv2 describe-load-balancers \
+            --names fargate-demo-alb \
+            --region ${{ secrets.AWS_REGION }} \
+            --query 'LoadBalancers[0].DNSName' \
+            --output text)
+
           echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
